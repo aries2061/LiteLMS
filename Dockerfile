@@ -8,7 +8,7 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+RUN npm install
 
 # Stage 2: Build the application
 FROM node:20-alpine AS builder
