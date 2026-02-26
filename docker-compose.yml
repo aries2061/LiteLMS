@@ -26,6 +26,27 @@ services:
         condition: service_healthy
 
   # ──────────────────────────────────────────────
+  # Database Migration Runner (uses builder stage)
+  # Runs prisma migrate deploy with full dependencies
+  # Usage: docker compose run --rm migrate
+  # ──────────────────────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: lite-lms-migrate
+    environment:
+      - DATABASE_URL=mysql://litelms:${MYSQL_PASSWORD}@mysql:3306/litelms
+    networks:
+      - net-app-mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: [ "npx", "prisma", "migrate", "deploy" ]
+    restart: "no"
+
+  # ──────────────────────────────────────────────
   # MariaDB 10.11 (ARM64-compatible MySQL drop-in)
   # ──────────────────────────────────────────────
   mysql:

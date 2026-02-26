@@ -72,8 +72,8 @@ docker compose ps
 ### 2.4 Initialize Database Schema
 Run the Prisma migrations to set up the MariaDB tables.
 ```bash
-# Run migrations inside the web container
-docker compose exec web npx prisma migrate deploy
+# Run migrations using the dedicated migrate service
+docker compose run --rm migrate
 ```
 
 ---
@@ -280,7 +280,7 @@ cd ~/lite-lms
 docker compose up -d web
 
 # If you made database schema changes, apply them now:
-docker compose exec web npx prisma migrate deploy
+docker compose run --rm migrate
 ```
 *Your offline Raspberry Pi is now successfully updated!*
 
