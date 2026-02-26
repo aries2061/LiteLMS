@@ -78,26 +78,30 @@ docker compose exec web npx prisma migrate deploy
 
 ---
 
-## 3. Setup Nginx Reverse Proxy & Let's Encrypt SSL
+## 3. Setup Nginx Reverse Proxy & Self-Signed SSL
 
-To make Lite LMS accessible from other devices in the local network securely via a domain name, we'll configure Nginx and Let's Encrypt.
+To make Lite LMS accessible securely via HTTPS on your local network without internet connectivity, we'll configure Nginx with a self-signed SSL certificate.
 
 ### 3.1 Network Preparation
-1. **Local DNS:** In your router (or separate DNS server), create a Local DNS record pointing `lms.your-domain.com` to the Raspberry Pi's local IP address (e.g., `192.168.1.100`).
-2. **Public DNS (Temporary):** Let's Encrypt needs to verify your domain. Temporarily point your public DNS A record for `lms.your-domain.com` to your router's public IP, and port forward port **80** on your router to the Raspberry Pi.
+In your router (or separate DNS server), create a Local DNS record pointing `lms.your-domain.com` (or whatever local domain you choose) to the Raspberry Pi's local IP address (e.g., `192.168.1.100`).
 
-### 3.2 Install Nginx & Certbot
+### 3.2 Install Nginx & OpenSSL
 ```bash
 sudo apt update
-sudo apt install nginx certbot python3-certbot-nginx -y
+sudo apt install nginx openssl -y
 ```
 
-### 3.3 Obtain Let's Encrypt SSL Certificate
-*While the Pi is connected to the internet:*
+### 3.3 Generate Self-Signed SSL Certificate
+Since this device will live offline, a self-signed certificate ensures the connection stays encrypted forever without needing external Let's Encrypt validation.
+
+Run this command to generate a certificate valid for 10 years (3650 days):
 ```bash
-sudo certbot certonly --standalone -d lms.your-domain.com
+sudo mkdir -p /etc/nginx/ssl
+sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+  -keyout /etc/nginx/ssl/litelms.key \
+  -out /etc/nginx/ssl/litelms.crt \
+  -subj "/C=US/ST=State/L=City/O=Organization/CN=lms.your-domain.com"
 ```
-*(Follow the prompts to generate the certificate).*
 
 ### 3.4 Configure Nginx
 Create the Nginx configuration file:
@@ -118,9 +122,9 @@ server {
     listen 443 ssl;
     server_name lms.your-domain.com;
 
-    # SSL Certificates
-    ssl_certificate /etc/letsencrypt/live/lms.your-domain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/lms.your-domain.com/privkey.pem;
+    # Self-Signed SSL Certificates
+    ssl_certificate /etc/nginx/ssl/litelms.crt;
+    ssl_certificate_key /etc/nginx/ssl/litelms.key;
 
     location / {
         proxy_pass http://localhost:3000;
@@ -139,8 +143,8 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-> **⚠️ Let's Encrypt Offline Expiration Warning:** 
-> Let's Encrypt certificates expire every 90 days. Because the Pi will be disconnected from the internet, automatic renewal will fail. Once the certificate expires, browsers on your local network will show a "Not Secure" warning. You can either temporarily reconnect the Pi to the internet every 3 months to run `sudo certbot renew`, OR you can eventually swap to self-signed SSL certificates.
+> **⚠️ Self-Signed Browser Warning:** 
+> When you first navigate to the site on a new device, your browser will warn you that the connection is not private (because it does not recognize your own self-signed authority). You must physically click **"Advanced"** -> **"Proceed to lms.your-domain.com (unsafe)"** to accept the certificate and view the site.
 
 ---
 
