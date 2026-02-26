@@ -16,6 +16,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV DATABASE_URL="mysql://dummy_user:dummy_password@localhost:3306/dummy_db"
+ENV MONGODB_URI="mongodb://admin:dummy_password@localhost:27017/dummy_db"
 RUN npx prisma generate
 RUN npm run build
 
