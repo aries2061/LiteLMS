@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # ──────────────────────────────────────────────
   # Next.js Web Application
@@ -49,7 +47,7 @@ services:
     networks:
       - net-app-mysql
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -76,7 +74,7 @@ services:
     networks:
       - net-app-mongo
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
       timeout: 5s
       retries: 5
