@@ -1,0 +1,105 @@
+version: "3.8"
+
+services:
+  # ──────────────────────────────────────────────
+  # Next.js Web Application
+  # ──────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lite-lms-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=mysql://litelms:${MYSQL_PASSWORD}@mysql:3306/litelms
+      - MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/litelms?authSource=admin
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=http://localhost:3000
+      - NODE_ENV=production
+    networks:
+      - net-app-mysql
+      - net-app-mongo
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+  # ──────────────────────────────────────────────
+  # MariaDB 10.11 (ARM64-compatible MySQL drop-in)
+  # ──────────────────────────────────────────────
+  mysql:
+    image: mariadb:10.11
+    container_name: lite-lms-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=litelms
+      - MYSQL_USER=litelms
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - net-app-mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  # ──────────────────────────────────────────────
+  # MongoDB 7 (ARM64-compatible)
+  # ──────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: lite-lms-mongo
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_DATABASE=litelms
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - net-app-mongo
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+# ──────────────────────────────────────────────
+# Isolated Networks
+# MySQL and MongoDB cannot communicate directly
+# ──────────────────────────────────────────────
+networks:
+  net-app-mysql:
+    driver: bridge
+  net-app-mongo:
+    driver: bridge
+
+# ──────────────────────────────────────────────
+# Persistent Volumes
+# ──────────────────────────────────────────────
+volumes:
+  mysql_data:
+  mongo_data:

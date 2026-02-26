@@ -1,0 +1,172 @@
+// ──────────────────────────────────────────────
+// Lite-LMS Prisma Schema
+// Database: MariaDB 10.11 (MySQL protocol)
+// ──────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ──────────────────────────────────────────────
+// User & Authentication
+// ──────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(STUDENT)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollments  Enrollment[]
+  certificates Certificate[]
+
+  @@map("users")
+}
+
+// ──────────────────────────────────────────────
+// Course Structure
+// ──────────────────────────────────────────────
+
+model Course {
+  id           String   @id @default(cuid())
+  title        String
+  description  String   @db.Text
+  thumbnail    String?
+  passingGrade Int      @default(70) // 0-100 scale
+  isPublished  Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  modules     Module[]
+  assessments Assessment[]
+  enrollments Enrollment[]
+
+  @@map("courses")
+}
+
+model Module {
+  id        String   @id @default(cuid())
+  title     String
+  order     Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courseId String
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  sections Section[]
+
+  @@unique([courseId, order])
+  @@map("modules")
+}
+
+enum ContentType {
+  IMAGE
+  PDF
+  VIDEO
+}
+
+model Section {
+  id          String      @id @default(cuid())
+  title       String
+  contentType ContentType
+  contentUrl  String      // Path to local file (e.g., /uploads/course-1/video.mp4)
+  order       Int
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  moduleId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, order])
+  @@map("sections")
+}
+
+// ──────────────────────────────────────────────
+// Assessment & Questions
+// ──────────────────────────────────────────────
+
+model Assessment {
+  id        String   @id @default(cuid())
+  title     String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courseId String
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  questions Question[]
+
+  @@map("assessments")
+}
+
+enum QuestionType {
+  TRUE_FALSE
+  MULTIPLE_CHOICE
+  FILL_IN_BLANK
+}
+
+model Question {
+  id       String       @id @default(cuid())
+  type     QuestionType
+  text     String       @db.Text
+  options  Json?        // For MULTIPLE_CHOICE: ["A", "B", "C", "D"]
+  answer   String       // Correct answer
+  order    Int
+  isActive Boolean      @default(true)
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@map("questions")
+}
+
+// ──────────────────────────────────────────────
+// Enrollment & Certificates
+// ──────────────────────────────────────────────
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  enrolledAt DateTime @default(now())
+  isActive   Boolean  @default(true)
+
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model Certificate {
+  id       String   @id @default(cuid())
+  pdfUrl   String   // Path to locally generated PDF
+  qrCode   String   // QR code data or path
+  issuedAt DateTime @default(now())
+
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+
+  @@map("certificates")
+}
