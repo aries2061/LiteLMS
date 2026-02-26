@@ -39,7 +39,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Copy Prisma schema and config for runtime migrations
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./
 
 # Explicitly install the prisma CLI and dotenv so all their sub-dependencies (like 'effect') are included for air-gapped migrations
 RUN npm install prisma dotenv
