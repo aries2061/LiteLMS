@@ -31,7 +31,7 @@ docker compose version
 Transfer the Next.js `lite-lms` project to your Raspberry Pi.
 ```bash
 # Clone the repository
-git clone <your-repo-url> ~/lite-lms
+git clone https://github.com/aries2061/LiteLMS.git
 cd ~/lite-lms
 ```
 
